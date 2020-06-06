@@ -1,0 +1,34 @@
+{
+    "name": "node-curl-loader",
+    "version": "0.0.1",
+    "description": "An implementation of curl-loader on node.js",
+    "main": "index.js",
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/Rhymmor/node-curl-loader.git"
+    },
+    "keywords": [
+        "curl-loader",
+        "libcurl",
+        "curl",
+        "traffic-gen"
+    ],
+    "author": "Rhymmor",
+    "license": "MIT",
+    "bugs": {
+        "url": "https://github.com/Rhymmor/node-curl-loader/issues"
+    },
+    "homepage": "https://github.com/Rhymmor/node-curl-loader#readme",
+    "devDependencies": {
+        "@types/node": "14.0.11",
+        "prettier": "2.0.5",
+        "ts-node": "8.10.2",
+        "typescript": "3.9.5"
+    },
+    "dependencies": {
+        "node-libcurl": "2.1.3"
+    }
+}
