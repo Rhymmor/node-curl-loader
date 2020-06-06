@@ -12,7 +12,7 @@ export class ExtendedEasy extends Easy {
     static duplicate(handle: ExtendedEasy) {
         const dupHandle = handle.dupHandle() as ExtendedEasy;
         dupHandle.num = handle.num;
-        dupHandle.currentLoop = handle.currentLoop + 1;
+        dupHandle.currentLoop = handle.currentLoop;
         return dupHandle;
     }
 }
