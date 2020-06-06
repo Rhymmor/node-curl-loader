@@ -8,6 +8,8 @@ export class Loader {
     private readonly handles: ExtendedEasy[] = [];
     private multi: Multi = new Multi();
 
+    private durationTimer?: NodeJS.Timer;
+
     constructor(config: IConfig) {
         this.config = config;
     }
@@ -25,6 +27,15 @@ export class Loader {
 
             console.log(`Added client #${i}`);
             this.addHandle(handle);
+        }
+
+        if (typeof this.config.durationSec === 'number') {
+            this.durationTimer = setTimeout(() => {
+                this.multi.close();
+                if (cb) {
+                    cb();
+                }
+            }, this.config.durationSec * 1000);
         }
     }
 
@@ -49,6 +60,9 @@ export class Loader {
 
         if (this.multi.getCount() === 0) {
             this.multi.close();
+            if (this.durationTimer) {
+                clearTimeout(this.durationTimer);
+            }
             if (cb) {
                 cb();
             }
