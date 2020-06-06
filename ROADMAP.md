@@ -1,0 +1,34 @@
+
+- Support all config options from curl-loader:
+    - <s>Cycles, Duration</s>
+    - IP addresses pool, netmask
+    - Network interface
+    - <s>Clients number full</s>
+    - Clients number initial
+    - Clients number rampup
+    - URLS:
+        - <s>URL itself</s>
+        - <s>Method</s>
+        - Timeout for completion
+        - Sleep timeout after 
+        - Username, password
+        - Headers
+        - Forms
+        - Upload file
+        - Rate limit
+        - Fetch probability
+        - Random URLS
+        - Templates
+
+- Threads support
+- Protocols:
+    - <s>HTTP</s>
+    - FTP:
+        - Modes: Active, Passive
+        - Fresh connect
+    - IMAP
+    - SMTP
+    - POP3
+- Statistics
+- SSL
+- IPv6
