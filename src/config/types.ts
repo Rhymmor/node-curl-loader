@@ -1,8 +1,14 @@
 export interface IConfig {
-    clientsNumber: number;
+    clientsNumber: IConfigClientNumber;
     loops?: number;
     durationSec: number;
     urls: IConfigUrl[];
+}
+
+export interface IConfigClientNumber {
+    full: number;
+    initial: number;
+    grow: number;
 }
 
 export interface IConfigUrl {

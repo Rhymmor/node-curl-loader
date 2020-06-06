@@ -1,10 +1,12 @@
 import { Curl, CurlOptionValueType } from 'node-libcurl';
 
-type IUsedMethods = 'GET' | 'HEAD' | 'POST';
+type IUsedMethods = 'GET' | 'HEAD' | 'POST' | 'PUT';
+
 const usedMethodsOptions: Record<IUsedMethods | '__', (method?: string) => CurlOptionValueType> = {
-    GET: () => ({}),
+    GET: () => ({ [Curl.option.HTTPGET]: true }),
     HEAD: () => ({ [Curl.option.NOBODY]: true }),
     POST: () => ({ [Curl.option.POST]: true }),
+    PUT: () => ({ [Curl.option.UPLOAD]: true }),
     __: method => ({ [Curl.option.CUSTOMREQUEST]: method })
 };
 

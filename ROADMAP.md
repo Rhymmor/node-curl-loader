@@ -1,4 +1,5 @@
 
+- Validate config
 - Support all config options from curl-loader:
     - <s>Cycles, Duration</s>
     - IP addresses pool, netmask
