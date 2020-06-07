@@ -114,11 +114,7 @@ export class Runner {
     private createNextHandle(handle: ExtendedEasy, reuse = true): ExtendedEasy {
         const nextHandle = ExtendedEasy.duplicate(handle, reuse);
         nextHandle.currentLoop++;
-
-        const urlConfig = this.getUrlConfigByLoop(nextHandle.currentLoop);
-        logger.info(urlConfig);
-
-        setHandleUrlOptions(nextHandle, urlConfig);
+        setHandleUrlOptions(nextHandle, this.getUrlConfigByLoop(nextHandle.currentLoop));
         return nextHandle;
     }
 
