@@ -9,8 +9,8 @@ export class ExtendedEasy extends Easy {
         this.num = num;
     }
 
-    static duplicate(handle: ExtendedEasy) {
-        const dupHandle = handle.dupHandle() as ExtendedEasy;
+    static duplicate(handle: ExtendedEasy, reuse = true): ExtendedEasy {
+        const dupHandle: ExtendedEasy = reuse ? (handle.dupHandle() as ExtendedEasy) : new ExtendedEasy(handle.num);
         dupHandle.num = handle.num;
         dupHandle.currentLoop = handle.currentLoop;
         return dupHandle;

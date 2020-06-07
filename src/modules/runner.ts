@@ -9,6 +9,8 @@ export class Runner {
     private readonly handles: ExtendedEasy[] = [];
     private multi: Multi = new Multi();
 
+    private sleepTimeouts = new Map<number, NodeJS.Timer>();
+
     constructor(config: IConfig) {
         this.config = config;
     }
@@ -57,23 +59,45 @@ export class Runner {
             logger.debug(url + ' returned response code: ' + responseCode);
         }
 
+        const lastSleep = this.sleepTimeouts.get(handle.num);
+        if (lastSleep) {
+            clearTimeout(lastSleep);
+            this.sleepTimeouts.delete(handle.num);
+        }
+
         if (this.shouldRepeat(handle.currentLoop)) {
-            logger.debug(`Performing request num ${handle.currentLoop + 1} for client #${handle.num}`);
-            const nextHandle = this.createNextHandle(handle);
-            this.addHandle(nextHandle);
+            const nextUrlConfig = this.getUrlConfigByLoop(handle.currentLoop + 1);
+
+            if (typeof nextUrlConfig.sleepAfterMs !== 'number' || nextUrlConfig.sleepAfterMs === 0) {
+                this.performNextRequest(handle);
+            } else {
+                this.sleepTimeouts.delete(handle.num);
+                this.sleepTimeouts.set(
+                    handle.num,
+                    setTimeout(() => this.performNextRequest(handle, false), nextUrlConfig.sleepAfterMs)
+                );
+            }
         }
         this.closeHandle(handle);
 
-        if (this.multi.getCount() === 0) {
+        if (this.multi.getCount() === 0 && this.sleepTimeouts.size === 0) {
             let shouldStop = true;
             if (cb) {
                 shouldStop = cb();
             }
+
             if (shouldStop) {
                 this.stop();
             }
         }
     };
+
+    private performNextRequest(handle: ExtendedEasy, reuse = true) {
+        logger.debug(`Performing request num ${handle.currentLoop + 1} for client #${handle.num}`);
+        const nextHandle = this.createNextHandle(handle, reuse);
+
+        this.addHandle(nextHandle);
+    }
 
     private addHandle(handle: ExtendedEasy) {
         this.handles.push(handle);
@@ -87,13 +111,20 @@ export class Runner {
         handle.close();
     }
 
-    private createNextHandle(handle: ExtendedEasy): ExtendedEasy {
-        const nextHandle = ExtendedEasy.duplicate(handle);
+    private createNextHandle(handle: ExtendedEasy, reuse = true): ExtendedEasy {
+        const nextHandle = ExtendedEasy.duplicate(handle, reuse);
         nextHandle.currentLoop++;
 
-        const urlIndex = nextHandle.currentLoop % this.config.urls.length;
-        setHandleUrlOptions(nextHandle, this.config.urls[urlIndex]);
+        const urlConfig = this.getUrlConfigByLoop(nextHandle.currentLoop);
+        logger.info(urlConfig);
+
+        setHandleUrlOptions(nextHandle, urlConfig);
         return nextHandle;
+    }
+
+    private getUrlConfigByLoop(loop: number) {
+        const urlIndex = loop % this.config.urls.length;
+        return this.config.urls[urlIndex];
     }
 
     private shouldRepeat(currentLoop: number) {

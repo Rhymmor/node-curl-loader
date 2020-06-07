@@ -14,4 +14,5 @@ export interface IConfigClientNumber {
 export interface IConfigUrl {
     url: string;
     method: string;
+    sleepAfterMs?: number;
 }
