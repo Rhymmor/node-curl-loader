@@ -65,8 +65,8 @@ export class Runner {
             this.sleepTimeouts.delete(handle.num);
         }
 
-        if (this.shouldRepeat(handle.currentLoop)) {
-            const nextUrlConfig = this.getUrlConfigByLoop(handle.currentLoop + 1);
+        if (this.shouldRepeat(handle.currentLoop, handle.urlNumber)) {
+            const nextUrlConfig = this.config.urls[handle.urlNumber];
 
             if (typeof nextUrlConfig.sleepAfterMs !== 'number' || nextUrlConfig.sleepAfterMs === 0) {
                 this.performNextRequest(handle);
@@ -93,8 +93,10 @@ export class Runner {
     };
 
     private performNextRequest(handle: ExtendedEasy, reuse = true) {
-        logger.debug(`Performing request num ${handle.currentLoop + 1} for client #${handle.num}`);
         const nextHandle = this.createNextHandle(handle, reuse);
+        logger.debug(
+            `Performing request with url #${nextHandle.urlNumber}, loop #${nextHandle.currentLoop} for a client #${nextHandle.num}`
+        );
 
         this.addHandle(nextHandle);
     }
@@ -113,17 +115,24 @@ export class Runner {
 
     private createNextHandle(handle: ExtendedEasy, reuse = true): ExtendedEasy {
         const nextHandle = ExtendedEasy.duplicate(handle, reuse);
-        nextHandle.currentLoop++;
-        setHandleUrlOptions(nextHandle, this.getUrlConfigByLoop(nextHandle.currentLoop));
+        const urlsLength = this.config.urls.length;
+
+        if (nextHandle.urlNumber >= urlsLength - 1) {
+            nextHandle.urlNumber = 0;
+            nextHandle.currentLoop++;
+        } else {
+            nextHandle.urlNumber++;
+        }
+
+        setHandleUrlOptions(nextHandle, this.config.urls[nextHandle.urlNumber]);
         return nextHandle;
     }
 
-    private getUrlConfigByLoop(loop: number) {
-        const urlIndex = loop % this.config.urls.length;
-        return this.config.urls[urlIndex];
-    }
-
-    private shouldRepeat(currentLoop: number) {
-        return typeof this.config.loops !== 'number' || currentLoop < this.config.loops;
+    private shouldRepeat(currentLoop: number, currentUrl: number) {
+        return (
+            typeof this.config.loops !== 'number' ||
+            currentLoop < this.config.loops ||
+            (currentLoop === this.config.loops && currentUrl + 1 < this.config.urls.length)
+        );
     }
 }
