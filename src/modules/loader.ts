@@ -1,5 +1,6 @@
 import { Runner } from './runner';
 import { IConfig } from '../config/types';
+import { logger } from '../lib/logger';
 
 export class Loader {
     private readonly runner: Runner;
@@ -17,30 +18,71 @@ export class Loader {
     public run(callback?: () => void) {
         this.callback = callback;
 
-        this.runner.run(this.onAfterStop);
+        this.runner.run(this.onRunnerFinished);
+
         if (typeof this.config.durationSec === 'number') {
             this.durationTimer = setTimeout(() => this.stop(), this.config.durationSec * 1000);
+        }
+
+        if (this.config.clientsNumber.grow > 0) {
+            this.setRampup();
         }
     }
 
     public stop() {
+        logger.info('Stopping loader');
         this.runner.stop();
         this.onAfterStop();
     }
 
-    private onAfterStop = () => {
-        if (this.callback) {
-            this.callback();
-        }
-
-        this.cleanup();
-    };
-
     public cleanup() {
+        logger.debug('Cleaning up loader');
         if (this.durationTimer) {
             clearTimeout(this.durationTimer);
         }
         this.durationTimer = undefined;
+        this.cleanupRampup();
         this.callback = undefined;
+    }
+
+    private setRampup() {
+        logger.debug('Setting clients ramp up');
+        this.rampupInterval = setInterval(() => {
+            const { full, grow } = this.config.clientsNumber;
+            const currentClients = this.runner.getClientsNumber();
+            const clientsToFull = full - currentClients;
+            const currentGrow = clientsToFull > grow ? grow : clientsToFull;
+
+            this.runner.rampUp(currentGrow);
+
+            if (this.runner.getClientsNumber() >= full) {
+                return this.cleanupRampup();
+            }
+        }, 1000);
+    }
+
+    private onRunnerFinished = (): boolean => {
+        if (this.rampupInterval) {
+            logger.debug('Runner has finished but rampup still active');
+            return false;
+        }
+        this.onAfterStop();
+        return true;
+    };
+
+    private onAfterStop = () => {
+        const callback = this.callback;
+        this.cleanup();
+        if (callback) {
+            callback();
+        }
+    };
+
+    private cleanupRampup() {
+        logger.debug('Cleaning up clients ramp up');
+        if (this.rampupInterval) {
+            clearInterval(this.rampupInterval);
+        }
+        this.rampupInterval = undefined;
     }
 }
