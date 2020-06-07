@@ -15,4 +15,5 @@ export interface IConfigUrl {
     url: string;
     method: string;
     sleepAfterMs?: number;
+    headers?: Record<string, string>;
 }

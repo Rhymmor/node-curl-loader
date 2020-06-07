@@ -10,4 +10,8 @@ export function setHandleUrlOptions(handle: ExtendedEasy, urlConfig: IConfigUrl)
         // TODO: Type properly
         handle.setOpt(key as any, value as any);
     }
+    if (urlConfig.headers) {
+        const headersList: string[] = Object.entries(urlConfig.headers).map(([key, value]) => `${key}: ${value}`);
+        handle.setOpt(Curl.option.HTTPHEADER, headersList);
+    }
 }

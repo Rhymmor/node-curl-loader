@@ -1,5 +1,4 @@
 
-- Validate config
 - Support all config options from curl-loader:
     - <s>Cycles, Duration</s>
     - IP addresses pool, netmask
@@ -10,10 +9,11 @@
     - URLS:
         - <s>URL itself</s>
         - <s>Method</s>
+        - <s>Sleep timeout after</s>
+        - <s>Headers</s>
+        - Keep Alive
         - Timeout for completion
-        - Sleep timeout after 
         - Username, password
-        - Headers
         - Forms
         - Upload file
         - Rate limit
