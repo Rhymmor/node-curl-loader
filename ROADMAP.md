@@ -1,13 +1,13 @@
 
 - Support all config options from curl-loader:
     - <s>Cycles, Duration</s>
+    - <s>Clients number full</s>
+    - <s>Clients number initial</s>
+    - <s>Clients number rampup</s>
     - IP addresses pool, netmask
     - Network interface
-    - <s>Clients number full</s>
-    - Clients number initial
-    - Clients number rampup
     - Traffic rate limit
-    - URLS:
+    - URLs:
         - <s>URL itself</s>
         - <s>Method</s>
         - <s>Headers</s>
@@ -18,16 +18,15 @@
         - Forms
         - Upload file
         - Rate limit
-        - Fetch probability
-        - Random URLS
-        - Templates
+        - Fetch probability (minor)
+        - Random URLS (minor)
+        - Templates (minor)
 
 - Threads support
 - Protocols:
     - <s>HTTP</s>
     - FTP:
         - Modes: Active, Passive
-        - Fresh connect
     - IMAP
     - SMTP
     - POP3
