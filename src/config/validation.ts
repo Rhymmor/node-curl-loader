@@ -1,5 +1,6 @@
 import { IConfig, IConfigClientNumber } from './types';
 import { IValidationResult } from '../lib/validation';
+import { logger } from '../lib/logger';
 
 export function validateConfig(config: IConfig): IValidationResult<IConfig> {
     const validConfig = { ...config };
@@ -23,11 +24,12 @@ function validateClientsNumber(clients: IConfigClientNumber): IValidationResult<
     }
 
     if (validClients.full < validClients.initial) {
-        console.warn('Initial clients number is greater than full one');
+        logger.warn('Initial clients number is greater than full one');
         validClients.initial = validClients.full;
+        validClients.grow = 0;
     }
     if (validClients.full < validClients.initial + validClients.grow) {
-        console.warn('Clients grow number will be decreased to match full number');
+        logger.warn('Clients grow number will be decreased to match full number');
         validClients.grow = validClients.full - validClients.initial;
     }
 

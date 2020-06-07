@@ -2,6 +2,7 @@ import { Multi, CurlCode } from 'node-libcurl';
 import { IConfig } from '../config/types';
 import { ExtendedEasy } from '../handers/easy';
 import { setHandleUrlOptions } from '../options/url';
+import { logger } from '../lib/logger';
 
 export class Runner {
     private readonly config: IConfig;
@@ -12,7 +13,9 @@ export class Runner {
         this.config = config;
     }
 
-    public run(cb?: () => void) {
+    public run(cb?: () => boolean) {
+        logger.debug('Running clients');
+
         this.multi = new Multi();
         // TODO: Type properly
         this.multi.onMessage(this.onMessage(cb) as any);
@@ -20,13 +23,17 @@ export class Runner {
     }
 
     public rampUp(grow: number) {
+        logger.debug(`Ramping up clients by ${grow}`);
+
         const initUrlConfig = this.config.urls[0];
+        const currentLength = this.handles.length;
         for (let i = 0; i < grow; i++) {
-            const handle = new ExtendedEasy(i);
+            const clientNumber = currentLength + i;
+            const handle = new ExtendedEasy(clientNumber);
             setHandleUrlOptions(handle, initUrlConfig);
 
-            console.log(`Added client #${i}`);
             this.addHandle(handle);
+            logger.debug(`Added client #${clientNumber}`);
         }
     }
 
@@ -34,29 +41,36 @@ export class Runner {
         this.multi.close();
     }
 
-    private onMessage = (cb?: () => void) => (error: Error, handle: ExtendedEasy, errorCode: CurlCode) => {
-        console.log('# of handles active: ' + this.multi.getCount());
+    public getClientsNumber() {
+        return this.handles.length;
+    }
+
+    private onMessage = (cb?: () => boolean) => (error: Error, handle: ExtendedEasy, errorCode: CurlCode) => {
+        logger.debug('# of handles active: ' + this.multi.getCount());
 
         const responseCode = handle.getInfo('RESPONSE_CODE').data;
         const url = this.config.urls[handle.currentLoop % this.config.urls.length].url;
 
         if (error) {
-            console.log(url + ' returned error: "' + error.message + '" with errcode: ' + errorCode);
+            logger.debug(url + ' returned error: "' + error.message + '" with errcode: ' + errorCode);
         } else {
-            console.log(url + ' returned response code: ' + responseCode);
+            logger.debug(url + ' returned response code: ' + responseCode);
         }
 
         if (this.shouldRepeat(handle.currentLoop)) {
-            console.log(`Performing request num ${handle.currentLoop + 1} for client #${handle.num}`);
+            logger.debug(`Performing request num ${handle.currentLoop + 1} for client #${handle.num}`);
             const nextHandle = this.createNextHandle(handle);
             this.addHandle(nextHandle);
         }
         this.closeHandle(handle);
 
         if (this.multi.getCount() === 0) {
-            this.stop();
+            let shouldStop = true;
             if (cb) {
-                cb();
+                shouldStop = cb();
+            }
+            if (shouldStop) {
+                this.stop();
             }
         }
     };
