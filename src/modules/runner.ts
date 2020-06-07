@@ -1,7 +1,7 @@
-import { Multi, Curl, CurlCode } from 'node-libcurl';
-import { IConfig, IConfigUrl } from './lib/config';
-import { ExtendedEasy } from './handers/easy';
-import { getCurlMethodOptions } from './lib/options/methods';
+import { Multi, CurlCode } from 'node-libcurl';
+import { IConfig } from '../config/types';
+import { ExtendedEasy } from '../handers/easy';
+import { setHandleUrlOptions } from '../options/url';
 
 export class Runner {
     private readonly config: IConfig;
@@ -16,12 +16,14 @@ export class Runner {
         this.multi = new Multi();
         // TODO: Type properly
         this.multi.onMessage(this.onMessage(cb) as any);
+        this.rampUp(this.config.clientsNumber.initial);
+    }
 
+    public rampUp(grow: number) {
         const initUrlConfig = this.config.urls[0];
-        for (let i = 0; i < this.config.clientsNumber; i++) {
+        for (let i = 0; i < grow; i++) {
             const handle = new ExtendedEasy(i);
-            this.setUrl(handle, initUrlConfig);
-            // handle.setOpt(Curl.option.WRITEFUNCTION, onData)
+            setHandleUrlOptions(handle, initUrlConfig);
 
             console.log(`Added client #${i}`);
             this.addHandle(handle);
@@ -61,10 +63,12 @@ export class Runner {
 
     private addHandle(handle: ExtendedEasy) {
         this.handles.push(handle);
+        // TODO: handle errors
         this.multi.addHandle(handle);
     }
 
     private closeHandle(handle: ExtendedEasy) {
+        // TODO: handle errors
         this.multi.removeHandle(handle);
         handle.close();
     }
@@ -74,22 +78,11 @@ export class Runner {
         nextHandle.currentLoop++;
 
         const urlIndex = nextHandle.currentLoop % this.config.urls.length;
-        this.setUrl(nextHandle, this.config.urls[urlIndex]);
+        setHandleUrlOptions(nextHandle, this.config.urls[urlIndex]);
         return nextHandle;
     }
 
     private shouldRepeat(currentLoop: number) {
         return typeof this.config.loops !== 'number' || currentLoop < this.config.loops;
-    }
-
-    private setUrl(handle: ExtendedEasy, urlConfig: IConfigUrl) {
-        handle.setOpt(Curl.option.URL, urlConfig.url);
-        const methodOpts = getCurlMethodOptions(urlConfig.method);
-        for (const [key, value] of Object.entries(methodOpts)) {
-            // TODO: Type properly
-            handle.setOpt(key as any, value as any);
-        }
-
-        handle.setOpt(Curl.option.PUT, urlConfig.url);
     }
 }

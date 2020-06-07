@@ -1,11 +1,12 @@
 import { Runner } from './runner';
-import { IConfig } from './lib/config';
+import { IConfig } from '../config/types';
 
 export class Loader {
     private readonly runner: Runner;
     private readonly config: IConfig;
 
     private durationTimer?: NodeJS.Timer;
+    private rampupInterval?: NodeJS.Timer;
     private callback?: () => void;
 
     constructor(config: IConfig) {
@@ -13,7 +14,7 @@ export class Loader {
         this.runner = new Runner(config);
     }
 
-    public run(callback: () => void) {
+    public run(callback?: () => void) {
         this.callback = callback;
 
         this.runner.run(this.onAfterStop);
