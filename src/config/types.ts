@@ -15,5 +15,7 @@ export interface IConfigUrl {
     url: string;
     method: string;
     sleepAfterMs?: number;
+    completionTimeoutMs?: number;
     headers?: Record<string, string>;
+    freshConnect?: boolean;
 }

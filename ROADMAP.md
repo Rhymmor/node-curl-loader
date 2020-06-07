@@ -6,13 +6,14 @@
     - <s>Clients number full</s>
     - Clients number initial
     - Clients number rampup
+    - Traffic rate limit
     - URLS:
         - <s>URL itself</s>
         - <s>Method</s>
-        - <s>Sleep timeout after</s>
         - <s>Headers</s>
-        - Keep Alive
-        - Timeout for completion
+        - <s>Sleep timeout after</s>
+        - <s>Timeout for completion</s>
+        - <s>Keep Alive</s>
         - Username, password
         - Forms
         - Upload file

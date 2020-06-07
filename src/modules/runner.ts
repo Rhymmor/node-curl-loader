@@ -1,5 +1,5 @@
 import { Multi, CurlCode } from 'node-libcurl';
-import { IConfig } from '../config/types';
+import { IConfig, IConfigUrl } from '../config/types';
 import { ExtendedEasy } from '../handers/easy';
 import { setHandleUrlOptions } from '../options/url';
 import { logger } from '../lib/logger';
@@ -8,8 +8,10 @@ export class Runner {
     private readonly config: IConfig;
     private readonly handles: ExtendedEasy[] = [];
     private multi: Multi = new Multi();
+    private callback?: () => boolean;
 
     private sleepTimeouts = new Map<number, NodeJS.Timer>();
+    private completionTimeouts = new Map<number, NodeJS.Timer>();
 
     constructor(config: IConfig) {
         this.config = config;
@@ -18,21 +20,22 @@ export class Runner {
     public run(cb?: () => boolean) {
         logger.debug('Running clients');
 
+        this.callback = cb;
         this.multi = new Multi();
         // TODO: Type properly
-        this.multi.onMessage(this.onMessage(cb) as any);
+        this.multi.onMessage(this.onMessage as any);
         this.rampUp(this.config.clientsNumber.initial);
     }
 
     public rampUp(grow: number) {
         logger.debug(`Ramping up clients by ${grow}`);
 
-        const initUrlConfig = this.config.urls[0];
-        const currentLength = this.handles.length;
+        const currentLength = this.getClientsNumber();
+
         for (let i = 0; i < grow; i++) {
             const clientNumber = currentLength + i;
             const handle = new ExtendedEasy(clientNumber);
-            setHandleUrlOptions(handle, initUrlConfig);
+            this.prepareHandleOptions(handle);
 
             this.addHandle(handle);
             logger.debug(`Added client #${clientNumber}`);
@@ -41,59 +44,74 @@ export class Runner {
 
     public stop() {
         this.multi.close();
+        this.callback = undefined;
     }
 
     public getClientsNumber() {
         return this.handles.length;
     }
 
-    private onMessage = (cb?: () => boolean) => (error: Error, handle: ExtendedEasy, errorCode: CurlCode) => {
+    private onMessage = (error: Error, handle: ExtendedEasy, errorCode: CurlCode) => {
         logger.debug('# of handles active: ' + this.multi.getCount());
 
-        const responseCode = handle.getInfo('RESPONSE_CODE').data;
-        const url = this.config.urls[handle.currentLoop % this.config.urls.length].url;
+        const url = this.config.urls[handle.urlNumber].url;
 
         if (error) {
             logger.debug(url + ' returned error: "' + error.message + '" with errcode: ' + errorCode);
         } else {
+            const responseCode = handle.getInfo('RESPONSE_CODE').data;
             logger.debug(url + ' returned response code: ' + responseCode);
         }
 
+        this.onFinishedHandle(handle);
+    };
+
+    private onFinishedHandle(handle: ExtendedEasy) {
         const lastSleep = this.sleepTimeouts.get(handle.num);
         if (lastSleep) {
             clearTimeout(lastSleep);
             this.sleepTimeouts.delete(handle.num);
         }
+        const completeTimeout = this.completionTimeouts.get(handle.num);
+        if (completeTimeout) {
+            clearTimeout(completeTimeout);
+            this.completionTimeouts.delete(handle.num);
+        }
+
+        this.closeHandle(handle);
 
         if (this.shouldRepeat(handle.currentLoop, handle.urlNumber)) {
-            const nextUrlConfig = this.config.urls[handle.urlNumber];
-
-            if (typeof nextUrlConfig.sleepAfterMs !== 'number' || nextUrlConfig.sleepAfterMs === 0) {
+            const currentUrlConfig = this.config.urls[handle.urlNumber];
+            if (typeof currentUrlConfig.sleepAfterMs !== 'number' || currentUrlConfig.sleepAfterMs === 0) {
                 this.performNextRequest(handle);
             } else {
                 this.sleepTimeouts.delete(handle.num);
+
+                if (currentUrlConfig.freshConnect) {
+                    handle.reset();
+                }
+
                 this.sleepTimeouts.set(
                     handle.num,
-                    setTimeout(() => this.performNextRequest(handle, false), nextUrlConfig.sleepAfterMs)
+                    setTimeout(() => this.performNextRequest(handle, false), currentUrlConfig.sleepAfterMs)
                 );
             }
         }
-        this.closeHandle(handle);
 
         if (this.multi.getCount() === 0 && this.sleepTimeouts.size === 0) {
             let shouldStop = true;
-            if (cb) {
-                shouldStop = cb();
+            if (this.callback) {
+                shouldStop = this.callback();
             }
 
             if (shouldStop) {
                 this.stop();
             }
         }
-    };
+    }
 
     private performNextRequest(handle: ExtendedEasy, reuse = true) {
-        const nextHandle = this.createNextHandle(handle, reuse);
+        const nextHandle = this.prepareHandleNextUrl(handle, reuse);
         logger.debug(
             `Performing request with url #${nextHandle.urlNumber}, loop #${nextHandle.currentLoop} for a client #${nextHandle.num}`
         );
@@ -102,7 +120,7 @@ export class Runner {
     }
 
     private addHandle(handle: ExtendedEasy) {
-        this.handles.push(handle);
+        this.handles[handle.num] = handle;
         // TODO: handle errors
         this.multi.addHandle(handle);
     }
@@ -110,22 +128,41 @@ export class Runner {
     private closeHandle(handle: ExtendedEasy) {
         // TODO: handle errors
         this.multi.removeHandle(handle);
-        handle.close();
     }
 
-    private createNextHandle(handle: ExtendedEasy, reuse = true): ExtendedEasy {
-        const nextHandle = ExtendedEasy.duplicate(handle, reuse);
+    private prepareHandleNextUrl(handle: ExtendedEasy, _reuse = true): ExtendedEasy {
         const urlsLength = this.config.urls.length;
 
-        if (nextHandle.urlNumber >= urlsLength - 1) {
-            nextHandle.urlNumber = 0;
-            nextHandle.currentLoop++;
+        if (handle.urlNumber >= urlsLength - 1) {
+            handle.urlNumber = 0;
+            handle.currentLoop++;
         } else {
-            nextHandle.urlNumber++;
+            handle.urlNumber++;
         }
 
-        setHandleUrlOptions(nextHandle, this.config.urls[nextHandle.urlNumber]);
-        return nextHandle;
+        this.prepareHandleOptions(handle);
+        return handle;
+    }
+
+    private prepareHandleOptions(handle: ExtendedEasy) {
+        const urlConfig = this.config.urls[handle.urlNumber];
+        setHandleUrlOptions(handle, urlConfig);
+
+        if (this.hasCompletionTimeout(urlConfig)) {
+            this.completionTimeouts.set(
+                handle.num,
+                setTimeout(() => {
+                    logger.debug(
+                        `Stopping a request for client ${handle.num} due to completion timeout ${urlConfig.completionTimeoutMs} ms`
+                    );
+                    this.onFinishedHandle(handle);
+                }, urlConfig.completionTimeoutMs!)
+            );
+        }
+    }
+
+    private hasCompletionTimeout(urlConfig: IConfigUrl) {
+        return typeof urlConfig.completionTimeoutMs === 'number' && urlConfig.completionTimeoutMs > 0;
     }
 
     private shouldRepeat(currentLoop: number, currentUrl: number) {
