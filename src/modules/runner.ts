@@ -1,8 +1,9 @@
-import { Multi, CurlCode } from 'node-libcurl';
+import { Multi, CurlCode, Curl } from 'node-libcurl';
 import { IConfig, IConfigUrl } from '../config/types';
 import { ExtendedEasy } from '../handers/easy';
 import { setHandleUrlOptions } from '../options/url';
 import { logger } from '../lib/logger';
+import { increaseIp } from '../network/ip';
 
 export class Runner {
     private readonly config: IConfig;
@@ -22,6 +23,7 @@ export class Runner {
 
         this.callback = cb;
         this.multi = new Multi();
+        this.setMultiOptions();
         // TODO: Type properly
         this.multi.onMessage(this.onMessage as any);
         this.rampUp(this.config.clientsNumber.initial);
@@ -35,7 +37,8 @@ export class Runner {
         for (let i = 0; i < grow; i++) {
             const clientNumber = currentLength + i;
             const handle = new ExtendedEasy(clientNumber);
-            this.prepareHandleOptions(handle);
+            this.setInitialOptions(handle);
+            this.prepareHandleUrlOptions(handle);
 
             this.addHandle(handle);
             logger.debug(`Added client #${clientNumber}`);
@@ -110,6 +113,15 @@ export class Runner {
         }
     }
 
+    private setMultiOptions() {
+        this.multi.setOpt(Multi.option.PIPELINING, 2);
+    }
+
+    private setInitialOptions(handle: ExtendedEasy) {
+        handle.setOpt(Curl.option.VERBOSE, true);
+        handle.setOpt(Curl.option.INTERFACE, increaseIp(this.config.network.minIp, handle.num));
+    }
+
     private performNextRequest(handle: ExtendedEasy, reuse = true) {
         const nextHandle = this.prepareHandleNextUrl(handle, reuse);
         logger.debug(
@@ -140,11 +152,11 @@ export class Runner {
             handle.urlNumber++;
         }
 
-        this.prepareHandleOptions(handle);
+        this.prepareHandleUrlOptions(handle);
         return handle;
     }
 
-    private prepareHandleOptions(handle: ExtendedEasy) {
+    private prepareHandleUrlOptions(handle: ExtendedEasy) {
         const urlConfig = this.config.urls[handle.urlNumber];
         setHandleUrlOptions(handle, urlConfig);
 

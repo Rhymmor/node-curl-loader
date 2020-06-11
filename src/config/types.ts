@@ -1,5 +1,6 @@
 export interface IConfig {
     clientsNumber: IConfigClientNumber;
+    network: IConfigNetwork;
     loops?: number;
     durationSec: number;
     urls: IConfigUrl[];
@@ -18,4 +19,13 @@ export interface IConfigUrl {
     completionTimeoutMs?: number;
     headers?: Record<string, string>;
     freshConnect?: boolean;
+}
+
+export interface IConfigNetwork {
+    interfaceName: string;
+    netmask?: number;
+    noAdditionalInterfaceIps?: boolean;
+    minIp: string;
+    maxIp?: string;
+    force?: boolean;
 }

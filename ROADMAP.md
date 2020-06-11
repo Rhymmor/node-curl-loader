@@ -4,9 +4,10 @@
     - <s>Clients number full</s>
     - <s>Clients number initial</s>
     - <s>Clients number rampup</s>
-    - IP addresses pool, netmask
-    - Network interface
+    - <s>IP addresses pool, netmask</s>
+    - <s>Network interface</s>
     - Traffic rate limit
+    - Share IPs between clients
     - URLs:
         - <s>URL itself</s>
         - <s>Method</s>
