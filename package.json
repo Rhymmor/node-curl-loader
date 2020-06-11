@@ -23,6 +23,7 @@
     },
     "homepage": "https://github.com/Rhymmor/node-curl-loader#readme",
     "devDependencies": {
+        "@types/ip-address": "5.8.2",
         "@types/node": "14.0.11",
         "@types/pino": "6.0.1",
         "pino-pretty": "4.0.0",
@@ -31,6 +32,7 @@
         "typescript": "3.9.5"
     },
     "dependencies": {
+        "ip-address": "6.3.0",
         "node-libcurl": "2.1.3",
         "pino": "6.3.2"
     }
