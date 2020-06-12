@@ -1,3 +1,5 @@
+import { HttpPostField } from 'node-libcurl';
+
 export interface IConfig {
     clientsNumber: IConfigClientNumber;
     network: IConfigNetwork;
@@ -19,6 +21,7 @@ export interface IConfigUrl {
     completionTimeoutMs?: number;
     headers?: Record<string, string>;
     freshConnect?: boolean;
+    data?: HttpPostField;
 }
 
 export interface IConfigNetwork {
