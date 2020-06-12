@@ -15,9 +15,9 @@
         - <s>Sleep timeout after</s>
         - <s>Timeout for completion</s>
         - <s>Keep Alive</s>
+        - Upload file
         - Username, password
         - Forms
-        - Upload file
         - Rate limit
         - Fetch probability (minor)
         - Random URLS (minor)

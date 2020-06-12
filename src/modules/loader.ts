@@ -12,13 +12,13 @@ export class Loader {
 
     constructor(config: IConfig) {
         this.config = config;
-        this.runner = new Runner(config);
+        this.runner = new Runner(config, this.shouldRunnerStop);
     }
 
     public run(callback?: () => void) {
         this.callback = callback;
 
-        this.runner.run(this.onRunnerFinished);
+        this.runner.run(this.onAfterStop);
 
         if (typeof this.config.durationSec === 'number') {
             this.durationTimer = setTimeout(() => this.stop(), this.config.durationSec * 1000);
@@ -29,9 +29,9 @@ export class Loader {
         }
     }
 
-    public stop() {
+    public async stop() {
         logger.info('Stopping loader');
-        this.runner.stop();
+        await this.runner.stop();
         this.onAfterStop();
     }
 
@@ -61,16 +61,15 @@ export class Loader {
         }, 1000);
     }
 
-    private onRunnerFinished = (): boolean => {
+    private shouldRunnerStop = () => {
         if (this.rampupInterval) {
             logger.debug('Runner has finished but rampup still active');
             return false;
         }
-        this.onAfterStop();
         return true;
     };
 
-    private onAfterStop = () => {
+    private onAfterStop = (_err?: any) => {
         const callback = this.callback;
         this.cleanup();
         if (callback) {

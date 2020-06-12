@@ -40,9 +40,9 @@ export class CurlLoader {
         });
     }
 
-    public stop(): boolean {
+    public async stop(): Promise<boolean> {
         if (this.loader) {
-            this.loader.stop();
+            await this.loader.stop();
             return true;
         }
         return false;

@@ -1,31 +1,32 @@
-import { Multi, CurlCode, Curl } from 'node-libcurl';
+import { Multi, CurlCode } from 'node-libcurl';
 import { IConfig, IConfigUrl } from '../config/types';
 import { ExtendedEasy } from '../handers/easy';
-import { setHandleUrlOptions } from '../handers/options/url';
+import { EasyConfigurator } from '../handers/options/url';
 import { logger } from '../lib/logger';
-import { increaseIp } from '../lib/network/ip';
 
 export class Runner {
     private readonly config: IConfig;
+    private shouldStop: () => boolean;
+
     private readonly handles: ExtendedEasy[] = [];
     private multi: Multi = new Multi();
-    private callback?: () => boolean;
+    private callback?: (err?: any) => void;
 
-    private sleepTimeouts = new Map<number, NodeJS.Timer>();
-    private completionTimeouts = new Map<number, NodeJS.Timer>();
+    private readonly configurator: EasyConfigurator;
+    private readonly sleepTimeouts = new Map<number, NodeJS.Timer>();
+    private readonly completionTimeouts = new Map<number, NodeJS.Timer>();
 
-    constructor(config: IConfig) {
+    constructor(config: IConfig, shouldStop: () => boolean) {
         this.config = config;
+        this.shouldStop = shouldStop;
+        this.configurator = new EasyConfigurator(config);
     }
 
-    public run(cb?: () => boolean) {
+    public run(cb?: (err?: any) => void) {
         logger.debug('Running clients');
 
         this.callback = cb;
-        this.multi = new Multi();
-        this.setMultiOptions();
-        // TODO: Type properly
-        this.multi.onMessage(this.onMessage as any);
+        this.prepareMulti();
         this.rampUp(this.config.clientsNumber.initial);
     }
 
@@ -37,15 +38,17 @@ export class Runner {
         for (let i = 0; i < grow; i++) {
             const clientNumber = currentLength + i;
             const handle = new ExtendedEasy(clientNumber);
-            this.setInitialOptions(handle);
-            this.prepareHandleUrlOptions(handle);
+            this.configurator.configure(handle);
+
+            this.prepareHandleUrl(handle);
 
             this.addHandle(handle);
             logger.debug(`Added client #${clientNumber}`);
         }
     }
 
-    public stop() {
+    public async stop() {
+        await this.configurator.cleanup().catch(e => logger.warn('Configurator cleanup was failed', e));
         this.multi.close();
         this.callback = undefined;
     }
@@ -54,7 +57,13 @@ export class Runner {
         return this.handles.length;
     }
 
-    private onMessage = (error: Error, handle: ExtendedEasy, errorCode: CurlCode) => {
+    private prepareMulti() {
+        this.multi = new Multi();
+        this.setMultiOptions();
+        this.multi.onMessage((...args) => this.onMessage<any>(...args));
+    }
+
+    private onMessage = <T extends ExtendedEasy>(error: Error, handle: T, errorCode: CurlCode) => {
         logger.debug('# of handles active: ' + this.multi.getCount());
 
         const url = this.config.urls[handle.urlNumber].url;
@@ -102,23 +111,16 @@ export class Runner {
         }
 
         if (this.multi.getCount() === 0 && this.sleepTimeouts.size === 0) {
-            let shouldStop = true;
-            if (this.callback) {
-                shouldStop = this.callback();
-            }
-
-            if (shouldStop) {
-                this.stop();
+            if (this.shouldStop()) {
+                this.stop()
+                    .then(() => this.callback?.())
+                    .catch(e => this.callback?.(e));
             }
         }
     }
 
     private setMultiOptions() {
         this.multi.setOpt(Multi.option.PIPELINING, 2);
-    }
-
-    private setInitialOptions(handle: ExtendedEasy) {
-        handle.setOpt(Curl.option.INTERFACE, increaseIp(this.config.network.minIp, handle.num));
     }
 
     private performNextRequest(handle: ExtendedEasy, reuse = true) {
@@ -151,14 +153,14 @@ export class Runner {
             handle.urlNumber++;
         }
 
-        this.prepareHandleUrlOptions(handle);
+        this.prepareHandleUrl(handle);
         return handle;
     }
 
-    private prepareHandleUrlOptions(handle: ExtendedEasy) {
-        const urlConfig = this.config.urls[handle.urlNumber];
-        setHandleUrlOptions(handle, urlConfig);
+    private prepareHandleUrl(handle: ExtendedEasy) {
+        this.configurator.configureUrl(handle);
 
+        const urlConfig = this.config.urls[handle.urlNumber];
         if (this.hasCompletionTimeout(urlConfig)) {
             this.completionTimeouts.set(
                 handle.num,
