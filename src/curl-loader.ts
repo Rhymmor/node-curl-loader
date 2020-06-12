@@ -21,6 +21,7 @@ export class CurlLoader {
                 netmask,
                 amount: cfg.clientsNumber.full,
                 force: cfg.network.force,
+                flushFirst: cfg.network.flushFirst,
             });
         }
 

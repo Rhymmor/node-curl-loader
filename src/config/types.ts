@@ -2,7 +2,7 @@ export interface IConfig {
     clientsNumber: IConfigClientNumber;
     network: IConfigNetwork;
     loops?: number;
-    durationSec: number;
+    durationSec?: number;
     urls: IConfigUrl[];
 }
 
@@ -28,4 +28,5 @@ export interface IConfigNetwork {
     minIp: string;
     maxIp?: string;
     force?: boolean;
+    flushFirst?: boolean;
 }
