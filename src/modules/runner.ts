@@ -1,7 +1,7 @@
 import { Multi, CurlCode, Curl } from 'node-libcurl';
 import { IConfig, IConfigUrl } from '../config/types';
 import { ExtendedEasy } from '../handers/easy';
-import { setHandleUrlOptions } from '../options/url';
+import { setHandleUrlOptions } from '../handers/options/url';
 import { logger } from '../lib/logger';
 import { increaseIp } from '../network/ip';
 
@@ -118,7 +118,6 @@ export class Runner {
     }
 
     private setInitialOptions(handle: ExtendedEasy) {
-        handle.setOpt(Curl.option.VERBOSE, true);
         handle.setOpt(Curl.option.INTERFACE, increaseIp(this.config.network.minIp, handle.num));
     }
 

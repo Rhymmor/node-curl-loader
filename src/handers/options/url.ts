@@ -1,5 +1,5 @@
-import { ExtendedEasy } from '../handers/easy';
-import { IConfigUrl } from '../config/types';
+import { ExtendedEasy } from '../easy';
+import { IConfigUrl } from '../../config/types';
 import { Curl } from 'node-libcurl';
 import { getCurlMethodOptions } from './methods';
 
