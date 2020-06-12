@@ -26,9 +26,21 @@ export class CurlLoader {
             });
         }
 
+        await this.cleanup();
         await FileUtils.createTmpDir();
+        await this.runLoader(cfg);
+        await this.cleanup();
+    }
 
-        return await this.runLoader(cfg);
+    public async stop(): Promise<boolean> {
+        if (this.loader) {
+            await this.loader.stop().catch(e => logger.warn('Failed to preperly stop loader', e));
+            await this.cleanup();
+
+            this.loader = undefined;
+            return true;
+        }
+        return false;
     }
 
     private runLoader(config: IConfig): Promise<void> {
@@ -38,13 +50,7 @@ export class CurlLoader {
         });
     }
 
-    public async stop(): Promise<boolean> {
-        if (this.loader) {
-            await this.loader.stop().catch(e => logger.warn('Failed to preperly stop loader', e));
-            await FileUtils.removeTmpDir().catch(e => logger.warn('Failed to remove temporary directory', e));
-
-            return true;
-        }
-        return false;
+    private async cleanup() {
+        await FileUtils.removeTmpDir().catch(e => logger.warn('Failed to remove temporary directory', e));
     }
 }
