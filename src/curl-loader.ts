@@ -2,7 +2,7 @@ import { IConfig } from './config/types';
 import { IFinishCallback } from './types/utils';
 import { Loader } from './modules/loader';
 import { validateConfig } from './config/validation';
-import { addSecondaryIps } from './network/iproute/iproute';
+import { addSecondaryIps } from './lib/network/iproute/iproute';
 
 export class CurlLoader {
     private loader?: Loader;

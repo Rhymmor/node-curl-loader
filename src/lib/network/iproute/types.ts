@@ -3,4 +3,5 @@ export interface ISecondaryIpOptions {
     amount: number;
     endIp?: string;
     force?: boolean;
+    flushFirst?: boolean;
 }

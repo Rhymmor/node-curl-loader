@@ -7,7 +7,7 @@ import { createWriteStream, unlink } from 'fs';
 import { BigInteger } from 'jsbn';
 import { calculateNetmask } from '../ip';
 import { ISecondaryIpOptions } from './types';
-import { logger } from '../../lib/logger';
+import { logger } from '../../logger';
 
 const asyncExec = promisify(exec);
 const asyncUnlink = promisify(unlink);
@@ -42,6 +42,10 @@ function createBatchFile(interfaceName: string, startIp: string, options: ISecon
             .on('error', err => reject(err))
             .on('close', resolve)
             .on('open', () => {
+                if (options.flushFirst) {
+                    stream.write(`address flush dev ${interfaceName}`);
+                }
+
                 let lastIpBigInt = startIpObj.bigInteger();
                 const bigOne = new BigInteger('1');
                 for (let i = 0; i < amount; i++) {

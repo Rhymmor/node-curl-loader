@@ -3,7 +3,7 @@ import { IConfig, IConfigUrl } from '../config/types';
 import { ExtendedEasy } from '../handers/easy';
 import { setHandleUrlOptions } from '../handers/options/url';
 import { logger } from '../lib/logger';
-import { increaseIp } from '../network/ip';
+import { increaseIp } from '../lib/network/ip';
 
 export class Runner {
     private readonly config: IConfig;
