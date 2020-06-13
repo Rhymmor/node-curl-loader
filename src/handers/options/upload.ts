@@ -1,6 +1,6 @@
 import { ExtendedEasy } from '../easy';
-import { IConfig } from '../../config/types';
-import { Curl, HttpPostField } from 'node-libcurl';
+import { IConfig, IConfigUrlData } from '../../config/types';
+import { Curl } from 'node-libcurl';
 import { isOk } from '../../lib/utils';
 import { FileUtils } from '../../lib/fs';
 import { logger } from '../../lib/logger';
@@ -19,7 +19,7 @@ export class EasyUploadConfigurator {
         if (urlConfig && urlConfig.data) {
             // TODO: Let's type methods more strictly
             if (urlConfig.method === 'POST') {
-                handle.setOpt(Curl.option.HTTPPOST, [urlConfig.data]);
+                this.setPostData(handle, urlConfig.data);
             } else if (urlConfig.method === 'PUT') {
                 await this.setPutData(handle, urlConfig.data);
             } else {
@@ -32,19 +32,29 @@ export class EasyUploadConfigurator {
         logger.debug('Cleaning up upload configurator');
         const promises: Promise<void>[] = [];
         for (const fd of this.descriptors.values()) {
-            promises.push(FileUtils.close(fd));
+            promises.push(FileUtils.close(fd).then(() => logger.debug(`fd ${fd} closed`)));
         }
         await Promise.all(promises);
 
         this.descriptors.clear();
     }
 
-    private async setPutData(handle: ExtendedEasy, data: HttpPostField) {
+    private setPostData(handle: ExtendedEasy, data: IConfigUrlData) {
+        if ('contents' in data) {
+            handle.setOpt(Curl.option.POSTFIELDS, data.contents);
+        } else {
+            handle.setOpt(Curl.option.HTTPPOST, [{ name: 'file', file: data.uploadFilePath }]);
+        }
+    }
+
+    private async setPutData(handle: ExtendedEasy, data: IConfigUrlData) {
         let fd: number | undefined;
-        if ('file' in data) {
-            fd = await this.getFileDescriptor(data.file);
+        if ('uploadFilePath' in data) {
+            fd = await this.getFileDescriptor(data.uploadFilePath);
         } else if ('contents' in data) {
-            fd = await this.getContentDescriptor(data.contents, handle.urlNumber);
+            handle.setOpt(Curl.option.CUSTOMREQUEST, 'PUT');
+            handle.setOpt(Curl.option.POSTFIELDS, data.contents);
+            return;
         }
 
         if (!isOk(fd)) {
@@ -55,16 +65,6 @@ export class EasyUploadConfigurator {
         handle.setOpt(Curl.option.READDATA, fd);
     }
 
-    private async getContentDescriptor(content: string, urlIndex: number) {
-        const filename = this.getTmpFileName(urlIndex);
-        let fd = this.descriptors.get(FileUtils.getTmpPath(filename));
-        if (!isOk(fd)) {
-            await FileUtils.writeTmp(filename, content);
-            fd = await FileUtils.openTmp(filename);
-        }
-        return fd;
-    }
-
     private async getFileDescriptor(filepath: string): Promise<number> {
         let fd = this.descriptors.get(filepath);
         if (!isOk(fd)) {
@@ -72,9 +72,5 @@ export class EasyUploadConfigurator {
             this.descriptors.set(filepath, fd);
         }
         return fd;
-    }
-
-    private getTmpFileName(urlIndex: number) {
-        return `upload-file-${urlIndex}`;
     }
 }

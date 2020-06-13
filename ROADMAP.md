@@ -15,7 +15,7 @@
         - <s>Sleep timeout after</s>
         - <s>Timeout for completion</s>
         - <s>Keep Alive</s>
-        - Upload file
+        - <s>Upload file</s>
         - Username, password
         - Forms
         - Rate limit

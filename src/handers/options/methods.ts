@@ -7,7 +7,7 @@ const usedMethodsOptions: Record<IUsedMethods | '__', (method?: string) => CurlO
     HEAD: () => ({ [Curl.option.NOBODY]: true }),
     POST: () => ({ [Curl.option.POST]: true }),
     PUT: () => ({ [Curl.option.UPLOAD]: true }),
-    __: method => ({ [Curl.option.CUSTOMREQUEST]: method })
+    __: method => ({ [Curl.option.CUSTOMREQUEST]: method }),
 };
 
 export function getCurlMethodOptions(method: string): CurlOptionValueType {
